@@ -33,21 +33,27 @@ class BotBuilder:
         
         self.statesCounter = 0
         self.currentState = self.statesCounter
+        self.beginState = self.currentState
+        
         self.bbot = OurBot()
-        self.machine = Machine(model=self.bbot, initial=self.convertStateIdToName(0))
+        self.machine = Machine(model=self.bbot, initial=self.convertStateIdToName(self.beginState), auto_transitions=False)
+        self.machine.add_states(State(name=self.getCurrentState()))
         self.labelToStateMap = {}
+        self.returnStack = []
         logger.debug("Initialized BotBuilder with node: " + str(self.bbot.state))
 
     def botSays(self, botString):
-        self.machine.add_states(State(name=self.getCurrentState()))
         setattr(self.bbot, "on_enter_"+self.getCurrentState(),
-                types.MethodType(lambda: print(botString), self.bbot))
+                types.MethodType(lambda x: print(botString), self.bbot))
         self.machine.add_transition("advance",
             source=self.getCurrentState(),
             dest=self.convertStateIdToName(self.getNextStateId()))
+        logger.debug("Tagging state " + self.getCurrentState() +
+                " as bot says state")
+
         self.advanceState()
+        logger.debug("Creating fallthrough state " + self.getCurrentState())
         
-        logger.debug("Added bot says state " + self.getCurrentState())
     
     def singleOptionUserResponse(self, response):
         self.machine.add_transition(response, source=self.getCurrentState(),
@@ -65,30 +71,39 @@ class BotBuilder:
 
         logger.debug("Added if state " + self.convertStateIdToName(ifState))
         self.setCurrentState(ifState)
+        self.pushReturnStack()
         ifTransitionFunction()
-        self.machine.add_transition("if",
+        self.machine.add_transition(ifTransitionName,
                 source=self.convertStateIdToName(currentState),
                 dest=self.convertStateIdToName(ifState))
-        self.machine.add_transition("advance",
-                source=self.getCurrentState(),
-                dest=self.convertStateIdToName(mergeState))
+        if self.popReturnStack():
+            self.machine.add_transition("advance",
+                    source=self.getCurrentState(),
+                    dest=self.convertStateIdToName(mergeState))
 
         logger.debug("Added else state " + self.convertStateIdToName(elseState))
         self.setCurrentState(elseState)
+        self.pushReturnStack()
         elseTransitionFunction()
-        self.machine.add_transition("else",
+        self.machine.add_transition(elseTransitionName,
                 source=self.convertStateIdToName(currentState),
                 dest=self.convertStateIdToName(elseState))
-        self.machine.add_transition("advance",
-                source=self.getCurrentState(),
-                dest=self.convertStateIdToName(mergeState))
+
+        if self.popReturnStack():
+            self.machine.add_transition("advance",
+                    source=self.getCurrentState(),
+                    dest=self.convertStateIdToName(mergeState))
 
         logger.debug("Added merge state " + self.convertStateIdToName(mergeState))
         self.setCurrentState(mergeState)
 
     def gotoNode(self, nodeLabel):
+        if len(self.returnStack) > 0:
+            self.returnStack[-1] = False
+
         if not nodeLabel in self.labelToStateMap:
             self.labelToStateMap[nodeLabel] = self.createNewState()
+            logger.debug("Creating branch to node " + self.getCurrentState())
 
         self.machine.add_transition("advance", source=self.getCurrentState(),
             dest=self.convertStateIdToName(self.labelToStateMap[nodeLabel]))
@@ -106,6 +121,10 @@ class BotBuilder:
 
     def createNewState(self):
         self.statesCounter = self.getNextStateId()
+        logger.debug("Created state " +
+            self.convertStateIdToName(self.statesCounter))
+        self.machine.add_states(
+            State(name=self.convertStateIdToName(self.statesCounter)))
         return self.statesCounter
 
     def getNextStateId(self):
@@ -119,7 +138,23 @@ class BotBuilder:
 
     def plotStateMachine(self, name):
         self.bbot.get_graph().draw(name, prog='dot')
-        
+
+    def getBeginState(self):
+        return self.convertStateIdToName(self.beginState)
+
+    def getMachine(self):
+        return self.machine
+
+    def getModel(self):
+        return self.bbot
+
+    def pushReturnStack(self):
+        self.returnStack.append(True)
+    
+    def popReturnStack(self):
+        value = self.returnStack[-1]
+        self.returnStack.pop()
+        return value
     
 def main():
     parser = argparse.ArgumentParser(description="BotBuilder")

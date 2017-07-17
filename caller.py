@@ -11,6 +11,8 @@ import argparse
 import logging
 
 import botbuilder
+import botrunner
+
 
 def cannot_persuade(builder):
     builder.botSays("I'm sorry you feel that way")
@@ -52,7 +54,8 @@ def runTest(isVerbose):
     conv_breakfast_conversation(builder)
     builder.plotStateMachine('state_machine.png')
 
-    evaluator = botRunner.CommandLineEvaluator(builder).run()
+    evaluator = botrunner.BotRunner(isVerbose, builder)
+    evaluator.RunCommandLineEvaluator()
 
 
 def main():
