@@ -33,6 +33,8 @@ class BotRunner:
         self.beginState = builder.getBeginState()
         self.endState = builder.getCurrentState()
         
+        self.builder = builder
+        
         if isVerbose:
             logging.basicConfig(level=logging.DEBUG)
         else:
@@ -46,11 +48,10 @@ class BotRunner:
         self.machine.set_state(start)
         while True:
             current = self.model.state
-            print('current state is: ' + current)
+            logger.info('current state is: ' + str(self.builder.getStateContent(current)))
             if current == end:
                 break
             transitions = self.machine.get_triggers(current)
-            #print('possible transitions ' + str(transitions))
             assert len(transitions) > 0
 
             if len(transitions) == 1:

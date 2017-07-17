@@ -21,7 +21,7 @@ def cannot_persuade(builder):
 
 def conv_journaling_persuasion(builder):
     builder.botSays("Okay you don't like journaling")
-    builder.multipleOptionUserResponse(
+    builder.twoOptionUserResponse(
         "Not really", lambda: buttonToFoodJournal(builder, "Great, you can do so here"), 
         "Yeah I hate you", lambda: cannot_persuade(builder))
 
@@ -40,7 +40,7 @@ def conv_breakfast_conversation(builder):
     builder.gotoNode("askUserToJournal")
     builder.botSays("Do you want to journal now?")
 
-    builder.multipleOptionUserResponse(
+    builder.twoOptionUserResponse(
         "Sure thing", lambda: buttonToFoodJournal(builder, "Great, you can do so here"), 
         "No thanks", lambda: conv_journaling_persuasion(builder))
 

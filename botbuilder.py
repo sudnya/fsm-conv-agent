@@ -39,6 +39,7 @@ class BotBuilder:
         self.machine = Machine(model=self.bbot, initial=self.convertStateIdToName(self.beginState), auto_transitions=False)
         self.machine.add_states(State(name=self.getCurrentState()))
         self.labelToStateMap = {}
+        self.stateIdToContent = {}
         self.returnStack = []
         logger.debug("Initialized BotBuilder with node: " + str(self.bbot.state))
 
@@ -51,23 +52,23 @@ class BotBuilder:
         logger.debug("Tagging state " + self.getCurrentState() +
                 " as bot says state")
 
-        self.advanceState()
+        self.advanceState(botString)
         logger.debug("Creating fallthrough state " + self.getCurrentState())
         
     
     def singleOptionUserResponse(self, response):
         self.machine.add_transition(response, source=self.getCurrentState(),
                 dest=self.convertStateIdToName(self.getNextStateId()))
-        self.advanceState()
+        self.advanceState(response)
     
-    def multipleOptionUserResponse(self,
+    def twoOptionUserResponse(self,
             ifTransitionName, ifTransitionFunction,
             elseTransitionName, elseTransitionFunction):
         
         currentState = self.getCurrentState()
-        ifState = self.createNewState()
-        elseState = self.createNewState()
-        mergeState = self.createNewState()
+        ifState = self.createNewState(ifTransitionName)
+        elseState = self.createNewState(elseTransitionName)
+        mergeState = self.createNewState("merge-block")
 
         logger.debug("Added if state " + self.convertStateIdToName(ifState))
         self.setCurrentState(ifState)
@@ -102,7 +103,7 @@ class BotBuilder:
             self.returnStack[-1] = False
 
         if not nodeLabel in self.labelToStateMap:
-            self.labelToStateMap[nodeLabel] = self.createNewState()
+            self.labelToStateMap[nodeLabel] = self.createNewState(nodeLabel)
             logger.debug("Creating branch to node " + self.getCurrentState())
 
         self.machine.add_transition("advance", source=self.getCurrentState(),
@@ -119,19 +120,20 @@ class BotBuilder:
     def convertStateIdToName(self, identity):
         return str(identity)
 
-    def createNewState(self):
+    def createNewState(self, textStr):
         self.statesCounter = self.getNextStateId()
         logger.debug("Created state " +
             self.convertStateIdToName(self.statesCounter))
         self.machine.add_states(
             State(name=self.convertStateIdToName(self.statesCounter)))
+        self.stateIdToContent[self.convertStateIdToName(self.statesCounter)] = textStr
         return self.statesCounter
 
     def getNextStateId(self):
         return self.statesCounter + 1
 
-    def advanceState(self):
-        self.setCurrentState(self.createNewState())
+    def advanceState(self, textStr):
+        self.setCurrentState(self.createNewState(textStr))
 
     def setCurrentState(self, state):
         self.currentState = state
@@ -155,7 +157,10 @@ class BotBuilder:
         value = self.returnStack[-1]
         self.returnStack.pop()
         return value
-    
+
+    def getStateContent(self, stateId):
+        return self.stateIdToContent.get(self.convertStateIdToName(stateId))
+
 def main():
     parser = argparse.ArgumentParser(description="BotBuilder")
     parser.add_argument("-v", "--verbose", default=False, action="store_true")
