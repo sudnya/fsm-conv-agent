@@ -6,7 +6,19 @@
 # \brief   Builder class to build a finite state machine
 #
 ###############################################################################
+'''
+person_name
+gender
+for later -> number of lbs to lose
+current_weight
+reason for weight loss
+favorite_song
 
+upto 3 possible paths for user response
+
+quiz -> 1 correct answer, other wrong
+
+'''
 import argparse
 import logging
 import types
@@ -36,12 +48,15 @@ class BotBuilder:
         self.beginState = self.currentState
         
         self.bbot = OurBot()
-        self.machine = Machine(model=self.bbot, initial=self.convertStateIdToName(self.beginState), auto_transitions=False)
+        self.machine = Machine(model=self.bbot, 
+            initial=self.convertStateIdToName(self.beginState), 
+            auto_transitions=False)
+        
         self.machine.add_states(State(name=self.getCurrentState()))
         self.labelToStateMap = {}
         self.stateIdToContent = {}
         self.returnStack = []
-        logger.debug("Initialized BotBuilder with node: " + str(self.bbot.state))
+        logger.debug("Initialized BotBuilder with node:" + str(self.bbot.state))
 
     def botSays(self, botString):
         setattr(self.bbot, "on_enter_"+self.getCurrentState(),
@@ -160,24 +175,4 @@ class BotBuilder:
 
     def getStateContent(self, stateId):
         return self.stateIdToContent.get(self.convertStateIdToName(stateId))
-
-def main():
-    parser = argparse.ArgumentParser(description="BotBuilder")
-    parser.add_argument("-v", "--verbose", default=False, action="store_true")
-
-    parsedArguments = parser.parse_args()
-    arguments = vars(parsedArguments)
-
-    isVerbose = arguments['verbose']
-
-    if isVerbose:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.INFO)
-    
-    
-
-if __name__ == '__main__':
-    main()
-
 
